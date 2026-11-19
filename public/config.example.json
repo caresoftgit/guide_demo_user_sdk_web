@@ -1,0 +1,7 @@
+{
+  "backendUrl": "https://YOUR_GATEWAY_HOST",
+  "accountId": "YOUR_ACCOUNT_ID",
+  "appId": "YOUR_CARESOFT_APP_ID",
+  "businessNumber": "YOUR_ASSIGNED_NUMBER",
+  "supportName": "Chăm sóc khách hàng"
+}
