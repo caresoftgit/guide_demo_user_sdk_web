@@ -3,5 +3,6 @@
   "accountId": "YOUR_ACCOUNT_ID",
   "appId": "YOUR_CARESOFT_APP_ID",
   "businessNumber": "YOUR_ASSIGNED_NUMBER",
-  "supportName": "Chăm sóc khách hàng"
+  "supportName": "Chăm sóc khách hàng",
+  "enterpriseBackendUrl": "https://YOUR_ENTERPRISE_BACKEND_HOST"
 }

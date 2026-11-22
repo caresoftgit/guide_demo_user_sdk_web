@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 async function login(page: Page) {
   await page.goto('/'); await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  await page.getByLabel('User ID khách hàng').fill('42'); await page.getByLabel('Account API token').fill('demo-fixture');
+  await page.getByLabel('Tên đăng nhập doanh nghiệp').fill('42'); await page.getByLabel('Mật khẩu doanh nghiệp').fill('demo-fixture');
   await page.locator('#submit-login').click(); await expect(page.locator('#login-dialog')).not.toBeVisible();
   await page.getByRole('button', { name: 'Bật âm thanh', exact: true }).click();
   await expect(page.getByRole('button', { name: /Gọi CSKH/ })).toBeEnabled();
@@ -39,12 +39,12 @@ test('reconnect status, preserved mute and continuous 30 second timeout', async 
   await page.locator('#reconnect').evaluate((b: HTMLButtonElement) => b.click()); await page.clock.fastForward(11000);
   await expect(view.locator('dialog')).not.toBeVisible(); await expect(page.locator('#app #error')).toContainText('30 giây');
 });
-test('logout/login and wrong-token fields do not retain credentials', async ({ page }) => {
+test('logout/login and wrong-password fields do not retain credentials', async ({ page }) => {
   await login(page); await page.locator('#logout').click(); await page.locator('#confirm-logout').click();
   await expect(page.locator('#user')).toHaveText('Chưa đăng nhập');
-  await page.locator('#login').click(); await page.getByLabel('User ID khách hàng').fill('42'); await page.getByLabel('Account API token').fill('wrong'); await page.locator('#submit-login').click();
-  await expect(page.locator('#login-error')).toContainText('UNAUTHORIZED'); await expect(page.getByLabel('Account API token')).toHaveValue('');
-  await page.locator('#cancel-login').click(); await page.locator('#login').click(); await expect(page.getByLabel('Account API token')).toHaveValue('');
+  await page.locator('#login').click(); await page.getByLabel('Tên đăng nhập doanh nghiệp').fill('42'); await page.getByLabel('Mật khẩu doanh nghiệp').fill('wrong'); await page.locator('#submit-login').click();
+  await expect(page.locator('#login-error')).toContainText('ENTERPRISE_REQUEST_FAILED'); await expect(page.getByLabel('Mật khẩu doanh nghiệp')).toHaveValue('');
+  await page.locator('#cancel-login').click(); await page.locator('#login').click(); await expect(page.getByLabel('Mật khẩu doanh nghiệp')).toHaveValue('');
   expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
 });
 test('revoked session closes call and requires login', async ({ page }) => {

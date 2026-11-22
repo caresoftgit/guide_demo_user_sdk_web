@@ -1,5 +1,7 @@
 # Trình duyệt và giới hạn
 
+Luồng xác thực hiện tại: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
+
 Mục tiêu: Chrome/Edge/Firefox/Safari bản hiện hành trên desktop; Chrome Android và
 Safari iOS hiện hành trên điện thoại. Kiểm tra khả năng thực tế qua `capabilities`,
 không giả định UA hoặc tên hãng bảo đảm một API có sẵn. WebView trong app cần host

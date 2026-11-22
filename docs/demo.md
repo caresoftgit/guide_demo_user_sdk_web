@@ -1,5 +1,7 @@
 # Chạy demo Web
 
+Luồng xác thực hiện tại: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
+
 ## 1. Cài dependencies
 
 Dùng Node 22.22+ hoặc Node 24 LTS và npm:
@@ -27,13 +29,13 @@ và không kiểm chứng âm thanh hai chiều. `wrong` mô phỏng lỗi đăn
 
 ## 3. Kết nối gateway thật
 
-1. Quản trị viên triển khai gateway 0.4.1 trở lên và thêm origin demo vào
+1. Quản trị viên triển khai gateway 0.5.0 trở lên và thêm origin demo vào
    `cors.allowed_origins` của backend. Không tạo cấu hình push Web. Xem [tích hợp](integration.md).
 2. Chép `public/config.example.json` thành `public/config.local.json`.
 3. Điền backendUrl (HTTPS gateway gốc, không thêm đường dẫn account API), accountId,
    appId và businessNumber được cấp. Không thêm account API token vào file này.
 4. Chạy `npm run dev -- --port 5188`, mở đúng origin đã đăng ký.
-5. Đăng nhập bằng user ID test và account API token nhập trực tiếp, sau đó bấm
+5. Đăng nhập bằng username/password doanh nghiệp test, sau đó bấm
    Bật âm thanh, cấp quyền microphone và kiểm tra trạng thái sẵn sàng.
 6. Bấm Gọi CSKH để gọi số cấu hình. Gọi từ tổng đài về đúng user ID để thử nhận.
    Dùng tài khoản/thiết bị test riêng khi kiểm tra nhiều thiết bị.

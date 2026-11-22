@@ -1,6 +1,8 @@
 # Kiểm thử và nghiệm thu
 
-Checklist áp dụng cho Web SDK/demo **0.1.1**, gateway **0.4.1** trở lên.
+Luồng xác thực hiện tại: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
+
+Checklist áp dụng cho Web SDK/demo **0.5.0**, gateway **0.5.0** trở lên.
 
 ## Kiểm thử tự động
 

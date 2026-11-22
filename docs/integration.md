@@ -1,5 +1,7 @@
 # Tích hợp Customer Voice vào Web
 
+Luồng xác thực hiện tại: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
+
 ## 1. Chuẩn bị
 
 Nhận từ Caresoft: HTTPS gateway URL, Account ID, Caresoft App ID và đầu số CSKH được
@@ -22,14 +24,14 @@ Production cần domain HTTPS cho Web, WSS media và origin được phép. Orig
 Account/App vẫn phải active và thuộc đúng account. CORS chỉ cho phép origin gọi
 API, không thay thế việc xác thực. Không dùng wildcard; localhost và domain HTTPS
 là các origin khác nhau, cần khai báo đầy đủ origin dùng ở từng môi trường.
-Gateway 0.4.1 trở lên không còn yêu cầu dòng Web trong bảng cấu hình push.
+Gateway 0.5.0 trở lên không còn yêu cầu dòng Web trong bảng cấu hình push.
 
 ## 3. Thêm SDK
 
 Chép gói tgz từ `packages/` vào project host rồi cài:
 
 ```sh
-npm install ./packages/caresoft-customer-voice-web-0.1.1.tgz
+npm install ./packages/caresoft-customer-voice-web-0.5.0.tgz
 ```
 
 Dùng bundler hiện đại như Vite. Gói là ESM/TypeScript declarations, không phụ thuộc
@@ -54,66 +56,32 @@ Khi bỏ hoàn toàn host: `callUi.dispose(); voice.dispose()`. Logout SDK cùng
 
 ## 4. Cấp phiên từ luồng đăng nhập của host
 
-Account API token xác thực tích hợp account, không chứng minh khách hàng cuối.
-Trong production, giữ token này ở backend host. Backend phải xác thực user, kiểm
-tra CSRF/quyền và tạo session gateway cho user đó; không tin user/account/App ID
-được gửi tùy ý từ browser.
-
-Ở browser sau khi host đã đăng nhập:
+Dùng [hợp đồng host bootstrap](host-bootstrap.md). Browser nhận ticket, không nhận credential tích hợp. Ví dụ sau khi host đã xác thực:
 
 ```ts
-const metadata = voice.loginParameters(authenticatedCustomerId);
-const response = await fetch('/api/my-account/voice-session', {
+const preparation = await voice.prepareLogin();
+const response = await fetch('/api/voice/bootstrap', {
   method: 'POST', credentials: 'same-origin',
-  headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-  body: JSON.stringify({ installationId: metadata.installation_id }),
+  headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
+  body: JSON.stringify({
+    attempt_id: preparation.attemptId, installation_id: preparation.installationId,
+    os: preparation.platform, application_id: preparation.applicationId,
+    push_environment: preparation.pushEnvironment,
+    code_challenge: preparation.codeChallenge,
+    code_challenge_method: preparation.codeChallengeMethod,
+  }),
 });
-if (!response.ok) throw new Error('Không cấp được phiên thoại');
-await voice.adoptSession(await response.json());
+if (!response.ok) throw new Error('BOOTSTRAP_FAILED');
+const ticket = await response.json();
+if (ticket.attempt_id !== preparation.attemptId) throw new Error('ATTEMPT_MISMATCH');
+await voice.loginWithTicket(preparation.attemptId, ticket.login_ticket);
 ```
 
-`/api/my-account/voice-session` là route **do host triển khai**, không phải route
-SDK/gateway có sẵn. Trình tự backend host:
+Backend đọc user_id từ phiên host, issue ticket bằng credential server. Không nhận user_id từ browser. Với bearer dùng Authorization thay cookie; không cần CSRF khi không có ambient cookie, nhưng vẫn cần CORS chính xác. Host API là do doanh nghiệp triển khai.
 
-1. Lấy user ID từ phiên đã xác thực, account/App ID/origin từ cấu hình tin cậy.
-2. Validate installationId là UUID; dùng nó trong POST gateway
-   `/{account_id}/api/v1/voice/sessions`, header Bearer account API token.
-3. Body: account_id, app_id, application_id=origin cố định, user_id đã xác thực,
-   installation_id, os=`web`, push_environment=`default`, sdk_version=`0.1.1`.
-4. Trả riêng data session_tokens về browser qua HTTPS, header Cache-Control:no-store.
-   Không trả account token, không log request/response credentials, không cache CDN.
-5. Thực hiện logout gateway khi host logout; browser cũng gọi voice.logout().
+SDK mặc định giữ phiên memory. Demo bật `sessionPersistence: 'tab'`; gọi `await voice.restoreSession()` trước khi mở nút đăng nhập/gọi. SDK xác minh phiên và tự refresh; mạng lỗi giữ UNKNOWN, explicit revoke xóa phiên. Tab nhân bản không tiếp quản phiên cũ nhờ Web Locks. Reload dọn cuộc gọi cũ, không phục hồi media. sessionStorage vẫn đọc được bằng JavaScript cùng origin, cần CSP/XSS controls.
 
-SDK mặc định không persist phiên; host có thể cấp lại phiên từ backend đã xác thực.
-Khi bật `sessionPersistence:"tab"`, SDK lưu access/refresh token và installation
-trong sessionStorage theo gateway/account/App/origin. Gọi `await voice.restoreSession()`
-khi khởi tạo trang; true nghĩa đã nạp phiên, kiểm tra readiness để biết đã xác minh
-hay còn UNKNOWN. Không lưu account token/media token, không dùng localStorage.
-
-Restore xác minh server và tự refresh access hết hạn. Lỗi mạng/503 giữ phiên UNKNOWN
-để thử lại, logout/server thu hồi thì xóa. SDK dọn cuộc gọi cũ thuộc trang trước,
-không phục hồi nguyên WebRTC qua reload. Sau F5 có thể cần bấm Bật âm thanh lại.
-Web Locks ngăn tab nhân bản dùng chung refresh; tab mới phải login riêng. Không có
-Web Locks/storage thì dùng memory và báo SESSION_PERSISTENCE_UNAVAILABLE.
-
-JavaScript cùng origin đọc được sessionStorage: host phải bảo vệ khỏi XSS/CSP phù
-hợp. Có BFF/phiên host sẵn thì ưu tiên cấp lại qua backend. Đóng tab không bảo đảm
-giữ phiên; tính năng Restore tabs của browser có thể giữ storage, nhưng server
-expiry/revocation luôn quyết định phiên còn hợp lệ hay không.
-
-```ts
-const voice = new CustomerVoice({
-  backendUrl: gatewayUrl, accountId, appId, applicationId: location.origin,
-  sessionPersistence: 'tab',
-});
-const restored = await voice.restoreSession();
-// Nếu false, nhận phiên từ host/adoptSession hoặc mở login demo.
-// Nếu true nhưng readiness UNKNOWN, hiển thị đang xác minh/kết nối lại.
-```
-
-
-`voice.login(userId, accountApiToken)` có sẵn cho **form demo/manual test** như các
-bản native. Không hardcode account token vào mã JS, env được nhúng bundle hoặc HTML.
+Logout gọi cả `voice.logout()` và API logout doanh nghiệp; xem helper `demo/enterpriseSession.ts`. Cookie host sau reload do hệ thống doanh nghiệp quản lý; demo bearer chỉ trong memory. Không dùng legacy login/adoptSession cho tích hợp mới.
 
 ## 5. Xin microphone và mở khóa âm thanh
 

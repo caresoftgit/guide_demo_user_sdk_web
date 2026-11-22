@@ -1,4 +1,4 @@
-# API Web 0.1.1
+# API Web 0.5.0
 
 Tất cả network/media action trả Promise; bắt `VoiceError.code/status`. Không log
 request body, headers hoặc credentials khi báo lỗi. Core không tự tạo UI đăng nhập.
@@ -19,10 +19,12 @@ chỉ cho HTTP/WS loopback khi phát triển. Một instance cho một ứng d�
 
 | API | Công dụng |
 |---|---|
-| `loginParameters(userId)` | Metadata cho host tạo phiên; installation UUID riêng cho instance/tab |
+| `prepareLogin()` | Tạo attempt và PKCE S256; chỉ trả bảy trường công khai |
+| `loginWithTicket(attemptId, ticket)` | Đổi ticket một lần; verifier chỉ ở SDK |
+| `loginParameters(userId)` | Legacy compatibility, không dùng cho tích hợp mới |
 | `restoreSession()` | Nạp phiên tab đã lưu, xác minh/refresh lại; false nếu không có phiên hoặc bị server từ chối |
-| `adoptSession(tokens)` | Nhận phiên do backend host cấp; xác minh bằng gateway rồi mở luồng sự kiện |
-| `login(userId, accountApiToken)` | Login trực tiếp cho demo/manual test; không hardcode token trong Web production |
+| `adoptSession(tokens)` | Legacy advanced compatibility; tích hợp mới dùng ticket PKCE |
+| `login(userId, accountApiToken)` | Deprecated/demo-only compatibility; demo hiện tại dùng ticket PKCE |
 | `logout()` | Dọn local ngay, cố thu hồi đúng phiên cũ; lỗi server không khôi phục local |
 | `prepareAudio()` | Gọi từ click/tap: xin quyền micro và mở khóa phát âm thanh |
 | `checkReadiness()` | Xác minh session hiện tại và trả khả năng gọi/nhận |
