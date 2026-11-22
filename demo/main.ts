@@ -27,7 +27,7 @@ async function start() {
     const response = await fetch('/config.local.json', { cache: 'no-store' }); if (!response.ok) throw new VoiceError('DEMO_CONFIGURATION_REQUIRED'); config = await response.json();
   }
   client = new CustomerVoice({ ...config, sessionPersistence: 'tab', applicationId: location.origin, allowLocalhost: location.hostname === 'localhost' || location.hostname === '127.0.0.1' }, deps);
-  const enterprise = createEnterpriseSession(config.enterpriseBackendUrl, client, fixture?.hostFetch ?? fetch);
+  const enterprise = createEnterpriseSession(config.enterpriseBackendUrl, client, fixture?.hostFetch ?? fetch, sessionStorage);
   const ui = installCustomerVoiceUi(client, { supportName: config.supportName }); ui.view.addEventListener('voice-error', e => error(new VoiceError((e as CustomEvent).detail.code)));
   client.onEvent(e => { if (e.type === 'error' || e.type === 'login_required') error(new VoiceError(e.code ?? 'CALL_ERROR')); });
   const render = (state: VoiceState) => {

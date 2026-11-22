@@ -13,9 +13,24 @@ export function createEnterpriseSession(
   hostUrl: string,
   native: NativeSession,
   transport: typeof fetch = fetch,
+  storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>,
 ) {
   let enterpriseToken: string | undefined;
   let pendingLogout = false;
+  const storageKey = `caresoft.enterprise-session.v1:${hostUrl.replace(/\/$/, '')}`;
+  const saved = storage?.getItem(storageKey);
+  if (saved) {
+    try {
+      const value = JSON.parse(saved);
+      if (typeof value.token !== 'string' || !/^[!-~]{1,4096}$/.test(value.token) || typeof value.pendingLogout !== 'boolean') throw new Error();
+      enterpriseToken = value.token;
+      pendingLogout = value.pendingLogout;
+    } catch { storage?.removeItem(storageKey); }
+  }
+  const persist = () => {
+    if (enterpriseToken) storage?.setItem(storageKey, JSON.stringify({ token: enterpriseToken, pendingLogout }));
+    else storage?.removeItem(storageKey);
+  };
   let epoch = 0;
   let loggingIn = false;
   const current = (value: number) => { if (value !== epoch) throw hostError('LOGIN_ATTEMPT_SUPERSEDED'); };
@@ -57,10 +72,10 @@ export function createEnterpriseSession(
     if (!token) {
       return;
     }
-    if (enterpriseToken === token) pendingLogout = true;
+    if (enterpriseToken === token) { pendingLogout = true; persist(); }
     try {
       await request('/api/auth/logout', {}, token);
-      if (enterpriseToken === token) { enterpriseToken = undefined; pendingLogout = false; }
+      if (enterpriseToken === token) { enterpriseToken = undefined; pendingLogout = false; persist(); }
     } catch {
       throw hostError('HOST_LOGOUT_PENDING');
     }
@@ -89,11 +104,11 @@ export function createEnterpriseSession(
         throw hostError('INVALID_ENTERPRISE_RESPONSE');
       }
       if (version !== epoch) {
-        enterpriseToken = authentication.enterprise_access_token;
+        enterpriseToken = authentication.enterprise_access_token; persist();
         try { await retryLogout(); } catch {}
         current(version);
       }
-      enterpriseToken = authentication.enterprise_access_token;
+      enterpriseToken = authentication.enterprise_access_token; pendingLogout = false; persist();
       const preparation = await native.prepareLogin();
       current(version);
       const ticket = await request('/api/voice/bootstrap', {

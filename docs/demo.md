@@ -20,7 +20,7 @@ npm run dev:fixture -- --port 5188
 ```
 
 Mở http://127.0.0.1:5188. Trang có nhãn vàng **KIỂM THỬ GIẢ LẬP**.
-Bấm Đăng nhập, nhập user ID số dương bất kỳ, token test bất kỳ (trừ `wrong`),
+Bấm Đăng nhập, nhập tên tài khoản bất kỳ và mật khẩu `demo-fixture`,
 bấm Bật âm thanh rồi Gọi CSKH. Dùng nhóm Điều khiển kiểm thử để tạo cuộc gọi đến,
 kết thúc phía CSKH, mất/phục hồi media hoặc thu hồi phiên.
 
@@ -32,8 +32,8 @@ và không kiểm chứng âm thanh hai chiều. `wrong` mô phỏng lỗi đăn
 1. Quản trị viên triển khai gateway 0.5.0 trở lên và thêm origin demo vào
    `cors.allowed_origins` của backend. Không tạo cấu hình push Web. Xem [tích hợp](integration.md).
 2. Chép `public/config.example.json` thành `public/config.local.json`.
-3. Điền backendUrl (HTTPS gateway gốc, không thêm đường dẫn account API), accountId,
-   appId và businessNumber được cấp. Không thêm account API token vào file này.
+3. Điền backendUrl (HTTPS gateway gốc, không thêm đường dẫn account API),
+   enterpriseBackendUrl (backend doanh nghiệp), accountId, appId và businessNumber được cấp. Không thêm account API token vào file này.
 4. Chạy `npm run dev -- --port 5188`, mở đúng origin đã đăng ký.
 5. Đăng nhập bằng username/password doanh nghiệp test, sau đó bấm
    Bật âm thanh, cấp quyền microphone và kiểm tra trạng thái sẵn sàng.
@@ -44,6 +44,8 @@ và không kiểm chứng âm thanh hai chiều. `wrong` mô phỏng lỗi đăn
 backend host đã xác thực theo bước 4 của tài liệu tích hợp, không phát account
 token cho khách hàng cuối. Account API token không được ghi vào Web Storage. Demo bật lưu token phiên
 trong sessionStorage để giữ đăng nhập qua F5, không lưu vào localStorage.
+Phiên doanh nghiệp demo cũng được lưu trong tab để đăng xuất cả host sau F5;
+không lưu username/password hoặc credential Caresoft.
 
 Loopback HTTP chỉ dùng trên máy tính đang chạy demo. Điện thoại cần site HTTPS
 có chứng thư tin cậy và origin được cấp riêng; không dùng HTTP IP LAN để xin mic.
