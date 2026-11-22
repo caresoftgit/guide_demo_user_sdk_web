@@ -8,17 +8,14 @@ export function createFixture() {
   const send = (type: string, extra = {}) => { for (const stream of streams) { try { stream.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type, call_id: id, ...extra })}\n\n`)); } catch { streams.delete(stream); } } };
   const persist = () => { if (session) sessionStorage.setItem('voice-fixture-server', JSON.stringify({ session, call })); else sessionStorage.removeItem('voice-fixture-server'); };
   const json = (data: unknown, status = 200) => { persist(); return new Response(JSON.stringify({ data, server_time: new Date().toISOString() }), { status, headers: { 'Content-Type': 'application/json' } }); };
-  let pending: any; let hostAuthenticated = false;
+  let pending: any;
   const hostFetch: typeof fetch = async (url, init = {}) => {
-    const body = JSON.parse(String(init.body));
     const reply = (value: object, status=200) => new Response(JSON.stringify(value), {status,headers:{'Content-Type':'application/json'}});
-    if (String(url).endsWith('/api/auth/login')) {
-      if (body.password !== 'demo-fixture') return reply({},401);
-      hostAuthenticated = true; return reply({enterprise_access_token:'h'.repeat(43)});
-    }
-    if (String(url).endsWith('/api/auth/logout')) { hostAuthenticated=false; return new Response(null,{status:204}); }
-    if (!hostAuthenticated || new Headers(init.headers).get('Authorization') !== 'Bearer '+'h'.repeat(43)) return reply({},401);
-    pending = {...body, ticket:'t'.repeat(43)}; return reply({attempt_id:body.attempt_id,login_ticket:pending.ticket});
+    if (String(url) !== '/api/voice/bootstrap') return reply({},404);
+    if (new URLSearchParams(location.search).get('hostSession') === 'expired') return reply({},401);
+    const body = JSON.parse(String(init.body));
+    pending = {...body, ticket:'t'.repeat(43)};
+    return reply({attempt_id:body.attempt_id,login_ticket:pending.ticket,expires_at:new Date(Date.now()+60000).toISOString()});
   };
   const rawFetch = async (url: RequestInfo | URL, init: RequestInit = {}) => {
     const path = String(url).split('/api/v1/voice')[1];

@@ -24,7 +24,7 @@ chỉ cho HTTP/WS loopback khi phát triển. Một instance cho một ứng d�
 | `loginParameters(userId)` | Legacy compatibility, không dùng cho tích hợp mới |
 | `restoreSession()` | Nạp phiên tab đã lưu, xác minh/refresh lại; false nếu không có phiên hoặc bị server từ chối |
 | `adoptSession(tokens)` | Legacy advanced compatibility; tích hợp mới dùng ticket PKCE |
-| `login(userId, accountApiToken)` | Deprecated/demo-only compatibility; demo hiện tại dùng ticket PKCE |
+| `login(userId, accountApiToken)` | Deprecated; chỉ giữ tương thích, tích hợp mới dùng ticket PKCE |
 | `logout()` | Dọn local ngay, cố thu hồi đúng phiên cũ; lỗi server không khôi phục local |
 | `prepareAudio()` | Gọi từ click/tap: xin quyền micro và mở khóa phát âm thanh |
 | `checkReadiness()` | Xác minh session hiện tại và trả khả năng gọi/nhận |

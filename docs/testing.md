@@ -9,16 +9,15 @@ Checklist áp dụng cho Web SDK/demo **0.5.0**, gateway **0.5.0** trở lên.
 | Phạm vi | Cách chạy | Điều được kiểm chứng |
 |---|---|---|
 | SDK | `npm test` trong repo SDK | Phiên/refresh, dữ liệu cũ, cleanup, mute capture, reconnect deadline |
-| Gateway | `./scripts/test-local.sh` trong backend | MySQL/Redis tạm, Web không có cấu hình push, origin allowlist, SSE, presence và hồi quy mobile |
 | Consumer | `npm run typecheck && npm run build` trong demo | API/declarations của gói tgz và build production |
-| Giao diện | `npm test` trong demo | 12 kịch bản × 5 engine/viewport, dùng API/media giả lập |
+| Giao diện | `npm test` trong demo | Các kịch bản trên 5 engine/viewport, dùng API/media giả lập |
 
 Bộ browser dùng Chrome, Firefox, WebKit desktop và viewport Chrome/WebKit điện
 thoại. Cần cài Chrome và Playwright Firefox/WebKit (`npx playwright install firefox
 webkit`) trước khi chạy ở máy mới. Viewport mobile không phải thiết bị thật.
 
 Các kịch bản: gọi/mute/unmute/DTMF/kết thúc; inbound reject/answer/remote end;
-reconnect/giữ mute/timeout 30 giây; logout/login/token sai; thu hồi phiên; mất mạng/reconnect; F5 giữ phiên/logout; cảnh báo F5 khi gọi; tab nhân bản; mất SSE trong cuộc gọi.
+reconnect/giữ mute/timeout 30 giây; ngắt/kết nối Voice và phiên doanh nghiệp hết hạn; thu hồi phiên; mất mạng/reconnect; F5 giữ phiên/logout; cảnh báo F5 khi gọi; tab nhân bản; mất SSE trong cuộc gọi.
 Các test giả lập không xác nhận SIP routing hoặc chất lượng microphone/RTP.
 
 ## Checklist cuộc gọi thật trên từng thiết bị/browser
@@ -39,13 +38,22 @@ Các test giả lập không xác nhận SIP routing hoặc chất lượng micr
    call khi mạng quay lại. SSE lỗi riêng không được cắt media vẫn đang tốt.
 8. Kết thúc từ mỗi phía: dialog đóng, hết busy và về trang ban đầu. Bấm kết thúc
    trong lúc answer/join chậm vẫn dọn media ngay.
-9. Logout khi rảnh/đang gọi rồi login user khác; không nhận sự kiện/token user cũ.
+9. Ngắt Voice khi rảnh/đang gọi rồi kết nối lại; đăng xuất ứng dụng và đổi tài khoản theo luồng doanh nghiệp; không nhận sự kiện/token user cũ.
    Refresh sau 15 phút không tạo phiên/call trùng; phiên bị thu hồi yêu cầu login.
 10. F5 khi gọi: cảnh báo, hủy giữ call; xác nhận dọn call cũ và giữ login đã xác minh. Logout rồi F5 không được hồi sinh phiên. Không phục hồi media cũ; gateway loại Web session khỏi nhận
     gọi khi stream đóng hoặc hết freshness. Không cam kết Web Push khi browser đóng.
 
 Ghi browser/version, OS/thiết bị, thời điểm UTC, call ID và tình huống. Không ghi
 account/access/refresh/media tokens vào báo cáo, ảnh hoặc log gửi hỗ trợ.
+
+## Bảo mật tích hợp
+
+- Giao diện không có trường nhập user ID, mật khẩu doanh nghiệp hoặc API token.
+- Request bootstrap chỉ có bảy trường preparation; danh tính lấy từ phiên server.
+- Phiên doanh nghiệp hết hạn trả 401, không fallback đăng nhập mẫu.
+- Sai attempt/PKCE, ticket dùng lại/hết hạn, origin hoặc Account/App không được phép đều phải bị từ chối.
+- Ngắt Voice rồi kết nối lại dùng phiên doanh nghiệp hiện có. Đăng xuất ứng dụng vô hiệu hóa phiên host, chặn ticket mới và thu hồi mọi phiên Voice thuộc host session kể cả khi gateway tạm offline.
+- Không ghi credential vào cấu hình/source/bundle/browser storage ngoài token phiên Voice khi chủ động bật lưu theo tab.
 
 ## Trạng thái bàn giao
 

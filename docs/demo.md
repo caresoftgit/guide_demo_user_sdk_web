@@ -1,57 +1,39 @@
-# Chạy demo Web
+# Chạy demo Customer Voice Web
 
-Luồng xác thực hiện tại: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
+Demo thực hiện kết nối/ngắt Voice và gọi/nhận bằng SDK. Đăng nhập doanh nghiệp thuộc ứng dụng của bạn, theo [hợp đồng xác thực](host-bootstrap.md).
 
-## 1. Cài dependencies
+## Cài dependencies
 
-Dùng Node 22.22+ hoặc Node 24 LTS và npm:
+Node 22.22+ hoặc Node 24 LTS:
 
 ```sh
 npm ci
+shasum -a 256 -c packages/SHA256SUMS
 ```
 
-Gói SDK đã đóng trong `packages/`; không cần npm registry riêng. Kiểm tra SHA-256
-bằng `shasum -a 256 -c packages/SHA256SUMS` tại thư mục gốc demo.
-
-## 2. Xem thử giao diện, không gọi thật
+## Xem UI bằng dữ liệu giả lập
 
 ```sh
 npm run dev:fixture -- --port 5188
 ```
 
-Mở http://127.0.0.1:5188. Trang có nhãn vàng **KIỂM THỬ GIẢ LẬP**.
-Bấm Đăng nhập, nhập tên tài khoản bất kỳ và mật khẩu `demo-fixture`,
-bấm Bật âm thanh rồi Gọi CSKH. Dùng nhóm Điều khiển kiểm thử để tạo cuộc gọi đến,
-kết thúc phía CSKH, mất/phục hồi media hoặc thu hồi phiên.
+Mở `http://127.0.0.1:5188`, có nhãn **KIỂM THỬ GIẢ LẬP**. Bấm **Kết nối Voice → Bật âm thanh → Gọi CSKH**. Không nhập tài khoản, mật khẩu, ID khách hàng hoặc API token. Nhóm điều khiển kiểm thử tạo inbound, remote end, reconnect và thu hồi phiên.
 
-Chế độ này mô phỏng API/media; không gọi tổng đài, không capture microphone thật
-và không kiểm chứng âm thanh hai chiều. `wrong` mô phỏng lỗi đăng nhập.
+Chế độ này chỉ mô phỏng một ứng dụng đã xác thực và API/media để xem UI, không chạy backend đăng nhập, không gọi gateway/tổng đài hoặc capture microphone thật. Build production loại phần giả lập.
 
-## 3. Kết nối gateway thật
+## Dùng với ứng dụng và gateway thật
 
-1. Quản trị viên triển khai gateway 0.5.0 trở lên và thêm origin demo vào
-   `cors.allowed_origins` của backend. Không tạo cấu hình push Web. Xem [tích hợp](integration.md).
-2. Chép `public/config.example.json` thành `public/config.local.json`.
-3. Điền backendUrl (HTTPS gateway gốc, không thêm đường dẫn account API),
-   enterpriseBackendUrl (backend doanh nghiệp), accountId, appId và businessNumber được cấp. Không thêm account API token vào file này.
-4. Chạy `npm run dev -- --port 5188`, mở đúng origin đã đăng ký.
-5. Đăng nhập bằng username/password doanh nghiệp test, sau đó bấm
-   Bật âm thanh, cấp quyền microphone và kiểm tra trạng thái sẵn sàng.
-6. Bấm Gọi CSKH để gọi số cấu hình. Gọi từ tổng đài về đúng user ID để thử nhận.
-   Dùng tài khoản/thiết bị test riêng khi kiểm tra nhiều thiết bị.
+1. Nhận cấu hình Caresoft và đăng ký exact origin của website; gateway phải hỗ trợ Web protocol 2.
+2. Chép `public/config.example.json` thành `public/config.local.json`; điền gateway URL gốc, Account ID, App ID, đầu số và tên hiển thị. File này công khai khi website chạy, không đặt credential vào đây.
+3. Đăng nhập người dùng bằng cơ chế sẵn có của ứng dụng doanh nghiệp. Backend đã ánh xạ principal sang `user_id` Caresoft.
+4. Triển khai endpoint ticket của doanh nghiệp theo [payload bootstrap](host-bootstrap.md). Mẫu `demo/hostBackend.ts` gọi `POST /api/voice/bootstrap` **cùng origin**, dùng cookie phiên sẵn có và đọc CSRF token từ `<meta name="csrf-token" content="...">` nếu có. Backend phải kiểm tra phiên, Origin và CSRF theo chính sách ứng dụng; thẻ meta không tự tạo được quyền đăng nhập.
+5. Nếu ứng dụng dùng bearer hoặc endpoint khác, sửa duy nhất adapter để dùng HTTP client đã xác thực của ứng dụng, giữ bảy trường preparation và response ticket. Không thay bằng credential Caresoft hoặc API đăng nhập mẫu.
+6. Phục vụ demo cùng origin với ứng dụng/API hoặc dùng reverse proxy do doanh nghiệp quản lý. Khi phát triển, có thể cấu hình Vite proxy đến backend của **bạn**; không có backend hoặc proxy môi trường tích hợp sẵn trong repo.
+7. Bấm **Kết nối Voice**, cấp microphone từ **Bật âm thanh**, kiểm tra readiness rồi gọi đầu số cấu hình. Nhận cuộc gọi trong khi tab hoạt động.
 
-Đây là form đăng nhập thủ công cho kiểm thử. Sản phẩm tích hợp nên cấp session qua
-backend host đã xác thực theo bước 4 của tài liệu tích hợp, không phát account
-token cho khách hàng cuối. Account API token không được ghi vào Web Storage. Demo bật lưu token phiên
-trong sessionStorage để giữ đăng nhập qua F5, không lưu vào localStorage.
-Phiên doanh nghiệp demo cũng được lưu trong tab để đăng xuất cả host sau F5;
-không lưu username/password hoặc credential Caresoft.
+`npm run dev` chỉ chạy giao diện. Nếu chưa nối backend, kết nối Voice sẽ báo lỗi bootstrap/phiên ứng dụng; đây không phải bộ đăng nhập doanh nghiệp độc lập.
 
-Loopback HTTP chỉ dùng trên máy tính đang chạy demo. Điện thoại cần site HTTPS
-có chứng thư tin cậy và origin được cấp riêng; không dùng HTTP IP LAN để xin mic.
-Không mở Vite dev server trực tiếp ra Internet. Dùng static build ở bước tiếp theo.
-
-## 4. Build và phục vụ bản thật
+## Build website
 
 ```sh
 npm run typecheck
@@ -59,25 +41,16 @@ npm run build
 npm run preview -- --port 5188
 ```
 
-Build mặc định loại module media giả lập. Đưa nội dung `dist/` lên static HTTPS
-hosting, cấp config.local.json trên cùng site. Đây là cấu hình công khai của site,
-không chứa credentials. File `public/config.local.json` bị Git ignore nhưng Vite
-sẽ chép nó vào dist nếu tồn tại: kiểm tra nội dung trước khi bàn giao.
+Đưa nội dung `dist/` lên HTTPS hosting của ứng dụng và cấu hình endpoint bootstrap ở cùng origin. `config.local.json` bị Git ignore nhưng Vite vẫn chép vào build nếu tồn tại: kiểm tra file này trước khi chia sẻ source/build. Bộ bàn giao chỉ có `config.example.json` với placeholder.
 
-Proxy phải cho phép Authorization, SSE streaming không buffer/cache và kết nối
-media WSS. Chỉ expose API công khai; không expose `/internal/*`. Điền cấu hình
-riêng cho từng môi trường trước build/triển khai.
+Loopback HTTP chỉ dùng phát triển trên máy hiện tại. Điện thoại cần site HTTPS có chứng thư tin cậy và origin được cấp riêng. Không mở Vite dev server ra Internet.
 
-## 5. Thao tác khi test
+## Thao tác
 
-- Đăng xuất: phiên và media local đóng ngay; có nút Đăng nhập lại.
-- Đang gọi: tắt/bật mic, chọn đầu ra nếu browser hỗ trợ, gửi DTMF trong cuộc gọi.
-- Kết thúc: màn hình gọi đóng về trang ban đầu.
-- Mất media: hiển thị Đang kết nối lại, giữ mute; quá 30 giây thì kết thúc local.
-- Mất mạng/kênh sự kiện: hiển thị đang nối lại; mất SSE riêng không cắt media đang tốt.
-- F5 khi đang gọi: browser cảnh báo; ở lại giữ call, xác nhận tải lại dọn call cũ.
-- F5 khi đăng nhập: tự xác minh/refresh phiên, không nhập account token lại khi phiên hợp lệ. Có thể cần Bật âm thanh lại.
-- Logout xóa phiên trong tab; tab nhân bản đăng nhập riêng.
-- Giữ tab mở/nền để nhận; OS freeze/đóng tab không được bảo đảm nhận.
+- **Kết nối Voice:** dùng phiên doanh nghiệp hiện tại xin ticket, không nhập danh tính thủ công.
+- **Ngắt Voice:** xóa phiên và media Voice; không đăng xuất tài khoản ứng dụng. Đăng xuất toàn bộ ứng dụng phải thực hiện SDK logout và thu hồi HOST ở backend theo tài liệu.
+- **F5:** SDK nạp lại phiên tab và xác minh; có thể cần bấm Bật âm thanh lại. Không phục hồi media của cuộc gọi cũ.
+- **Mất SSE:** hiển thị nối lại dịch vụ, không cắt media còn tốt. Mất media liên tục quá 30 giây thì kết thúc local.
+- **Đóng/freeze tab:** không bảo đảm nhận cuộc gọi; chưa có Web Push.
 
-Đối chiếu [checklist kiểm thử](testing.md) trước nghiệm thu.
+Dùng [checklist kiểm thử](testing.md) để nghiệm thu trên môi trường của bạn.

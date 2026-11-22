@@ -1,6 +1,6 @@
 # Tích hợp Customer Voice vào Web
 
-Luồng xác thực hiện tại: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
+Luồng xác thực: [phiên doanh nghiệp → ticket PKCE → SDK](host-bootstrap.md).
 
 ## 1. Chuẩn bị
 
@@ -17,7 +17,7 @@ Production cần domain HTTPS cho Web, WSS media và origin được phép. Orig
 2. Vào **Admin Settings → Cơ bản → Voice SDK**; xin quyền quản trị nếu chưa thấy.
 3. Tạo App, đặt tên, bật **Hoạt động**, lưu và sao chép **App ID** do Caresoft sinh.
 4. Gửi các origin website thực tế cho đơn vị vận hành gateway để thêm vào
-   `cors.allowed_origins` của backend. Ví dụ: `https://app.example.com`.
+   allowlist gateway. Ví dụ: `https://app.example.com`.
 5. Có thể dùng cùng App ID với Android/iOS và nhiều origin được phép. Web không
    cần tạo cấu hình push, không cần Firebase/APNs/VAPID hoặc push token.
 
@@ -51,8 +51,7 @@ const callUi = installCustomerVoiceUi(voice, { supportName: 'Chăm sóc khách h
 ```
 
 Thay toàn bộ placeholder. Một instance cho ứng dụng trong tab, giữ qua các route.
-Khi bỏ hoàn toàn host: `callUi.dispose(); voice.dispose()`. Logout SDK cùng logout
-ứng dụng để thu hồi phiên, không chỉ đóng widget.
+Khi bỏ hoàn toàn host: `callUi.dispose(); voice.dispose()`. Khi ứng dụng đăng xuất, dọn SDK và thu hồi phiên doanh nghiệp theo mục 8.
 
 ## 4. Cấp phiên từ luồng đăng nhập của host
 
@@ -81,7 +80,7 @@ Backend đọc user_id từ phiên host, issue ticket bằng credential server. 
 
 SDK mặc định giữ phiên memory. Demo bật `sessionPersistence: 'tab'`; gọi `await voice.restoreSession()` trước khi mở nút đăng nhập/gọi. SDK xác minh phiên và tự refresh; mạng lỗi giữ UNKNOWN, explicit revoke xóa phiên. Tab nhân bản không tiếp quản phiên cũ nhờ Web Locks. Reload dọn cuộc gọi cũ, không phục hồi media. sessionStorage vẫn đọc được bằng JavaScript cùng origin, cần CSP/XSS controls.
 
-Logout gọi cả `voice.logout()` và API logout doanh nghiệp; xem helper `demo/enterpriseSession.ts`. Cookie host sau reload do hệ thống doanh nghiệp quản lý; demo bearer chỉ trong memory. Không dùng legacy login/adoptSession cho tích hợp mới.
+Khi đăng xuất ứng dụng, gọi cả `voice.logout()` và API logout doanh nghiệp theo mục 8. Phiên ứng dụng sau reload do hệ thống doanh nghiệp quản lý. Không dùng legacy login/adoptSession cho tích hợp mới. Demo không thực hiện đăng nhập doanh nghiệp; adapter `demo/hostBackend.ts` dùng phiên ứng dụng đã có.
 
 ## 5. Xin microphone và mở khóa âm thanh
 
@@ -146,15 +145,22 @@ Khi tab bị đóng/freeze/OS kill, không bảo đảm nhận. Trình duyệt �
 nghiệm thu thiết bị thật. Dùng cài đặt hệ thống nếu không hỗ trợ chọn loa/tai nghe;
 không hiển thị nút Speaker giả. Xem [khả năng trình duyệt](compatibility.md).
 
-## 8. Logout và kiểm thử
+## 8. Ngắt Voice, đăng xuất ứng dụng và kiểm thử
+
+Ngắt riêng Voice:
 
 ```ts
-await voice.logout(); // local cleanup luôn xảy ra trước yêu cầu server
-unsubscribe();        // khi host không còn cần observer này
+await voice.logout(); // Dọn local trước khi chờ thu hồi server.
 ```
 
-Nếu thu hồi server thất bại, báo rõ và thử xử lý theo chính sách backend host;
-không tự khôi phục phiên local đã xóa. Dùng [checklist](testing.md) trước phát hành.
+Ứng dụng vẫn đăng nhập; người dùng có thể kết nối Voice lại bằng ticket mới.
+Khi đăng xuất toàn bộ ứng dụng, gọi cả SDK và luồng logout doanh nghiệp hiện có,
+kiểm tra lỗi từng bước và thu hồi HOST bằng outbox bền vững phía server.
+Xem [payload và trách nhiệm logout](host-bootstrap.md#ngắt-voice-và-đăng-xuất-ứng-dụng).
+Khi bỏ observer: `unsubscribe()`. Khi bỏ hẳn instance: dọn UI rồi `voice.dispose()`.
+
+Không khôi phục token local đã xóa nếu thu hồi lỗi. Kiểm thử ticket/refresh/logout,
+ngắt Voice rồi kết nối lại và đổi tài khoản bằng [checklist](testing.md).
 
 ## Cảnh báo rời trang khi đang gọi
 

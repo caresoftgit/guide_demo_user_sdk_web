@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 async function login(page: Page) {
-  await page.goto('/'); await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  await page.getByLabel('Tên đăng nhập doanh nghiệp').fill('42'); await page.getByLabel('Mật khẩu doanh nghiệp').fill('demo-fixture');
-  await page.locator('#submit-login').click(); await expect(page.locator('#login-dialog')).not.toBeVisible();
+  await page.goto('/'); await page.getByRole('button', { name: 'Kết nối Voice', exact: true }).click();
+  await expect(page.locator('#user')).toHaveText('Khách hàng 42');
   await page.getByRole('button', { name: 'Bật âm thanh', exact: true }).click();
   await expect(page.getByRole('button', { name: /Gọi CSKH/ })).toBeEnabled();
 }
@@ -39,18 +38,17 @@ test('reconnect status, preserved mute and continuous 30 second timeout', async 
   await page.locator('#reconnect').evaluate((b: HTMLButtonElement) => b.click()); await page.clock.fastForward(11000);
   await expect(view.locator('dialog')).not.toBeVisible(); await expect(page.locator('#app #error')).toContainText('30 giây');
 });
-test('logout/login and wrong-password fields do not retain credentials', async ({ page }) => {
+test('disconnect clears only the Voice session and reconnect uses the existing application session', async ({ page }) => {
   await login(page); await page.locator('#logout').click(); await page.locator('#confirm-logout').click();
-  await expect(page.locator('#user')).toHaveText('Chưa đăng nhập');
-  await page.locator('#login').click(); await page.getByLabel('Tên đăng nhập doanh nghiệp').fill('42'); await page.getByLabel('Mật khẩu doanh nghiệp').fill('wrong'); await page.locator('#submit-login').click();
-  await expect(page.locator('#login-error')).toContainText('ENTERPRISE_REQUEST_FAILED'); await expect(page.getByLabel('Mật khẩu doanh nghiệp')).toHaveValue('');
-  await page.locator('#cancel-login').click(); await page.locator('#login').click(); await expect(page.getByLabel('Mật khẩu doanh nghiệp')).toHaveValue('');
+  await expect(page.locator('#user')).toHaveText('Chưa kết nối Voice');
   expect(await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.keys(sessionStorage) }))).toEqual({ local: [], session: [] });
+  await page.locator('#login').click(); await expect(page.locator('#user')).toHaveText('Khách hàng 42');
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });
 test('revoked session closes call and requires login', async ({ page }) => {
   await login(page); await page.getByRole('button', { name: /Gọi CSKH/ }).click(); const view = page.locator('caresoft-voice-call');
   await expect(view.getByText('Đang đàm thoại', { exact: true })).toBeVisible(); await page.locator('#revoke').evaluate((b: HTMLButtonElement) => b.click());
-  await expect(view.locator('dialog')).not.toBeVisible(); await expect(page.locator('#user')).toHaveText('Chưa đăng nhập');
+  await expect(view.locator('dialog')).not.toBeVisible(); await expect(page.locator('#user')).toHaveText('Chưa kết nối Voice');
 });
 
 test('shows offline/reconnecting status, prevents new calls and retains login', async ({ page, context }, testInfo) => {
@@ -63,10 +61,10 @@ test('restores and checks login after reload, clears it on logout and never save
   await login(page); await page.reload(); await expect(page.locator('#user')).toHaveText('Khách hàng 42');
   await expect(page.locator('#login')).not.toBeVisible(); await expect(page.locator('#reasons')).toContainText('Bấm Bật âm thanh'); await page.screenshot({ path: testInfo.outputPath('restored.png'), fullPage: true });
   const storage = await page.evaluate(() => ({ local: Object.keys(localStorage), session: Object.values(sessionStorage).join('') }));
-  expect(storage.local).toEqual([]); expect(storage.session).not.toContain('demo-fixture');
+  expect(storage.local).toEqual([]); expect(storage.session).not.toContain('enterprise_access_token');
   await page.getByRole('button', { name: 'Bật âm thanh', exact: true }).click(); await expect(page.getByRole('button', { name: /Gọi CSKH/ })).toBeEnabled();
   await page.locator('#logout').click(); await page.locator('#confirm-logout').click(); await page.reload();
-  await expect(page.locator('#user')).toHaveText('Chưa đăng nhập');
+  await expect(page.locator('#user')).toHaveText('Chưa kết nối Voice');
 });
 test('warns on reload during a call and cancellation keeps it', async ({ page }) => {
   await login(page); await page.getByRole('button', { name: /Gọi CSKH/ }).click(); const view = page.locator('caresoft-voice-call');
@@ -95,7 +93,7 @@ test('does not enable account/audio controls until the restored session has been
 });
 test('copied session in another tab cannot take over the original session', async ({ page }) => {
   await login(page); const popup = page.waitForEvent('popup'); await page.evaluate(() => window.open('/', '_blank'));
-  const other = await popup; await expect(other.locator('#user')).toHaveText('Chưa đăng nhập');
+  const other = await popup; await expect(other.locator('#user')).toHaveText('Chưa kết nối Voice');
   await expect(page.locator('#user')).toHaveText('Khách hàng 42'); await expect(page.locator('#app #status')).toHaveText('Sẵn sàng gọi và nhận cuộc gọi'); await other.close();
 });
 
